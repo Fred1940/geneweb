@@ -2,6 +2,7 @@
 (* Copyright (c) 1998-2007 INRIA *)
 
 open Config
+open Path
 open Def
 open Gwdb
 open TemplAst
@@ -24,7 +25,7 @@ let adm_file f = List.fold_right Filename.concat [!(Util.cnt_dir); "cnt"] f
 (* REORG counts *)
 (*let cnt conf ext = adm_file (conf.bname ^ "_cnt" ^ ext)*)
 let cnt conf ext = String.concat Filename.dir_sep
-  [Util.base_path conf.bname; "etc"; "cnt"; "counts" ^ ext]
+  [conf.path.dir_root; "etc"; "cnt"; "counts" ^ ext]
 
 let input_int ic =
   try int_of_string (input_line ic) with End_of_file | Failure _ -> 0
@@ -80,7 +81,7 @@ let set_wizard_and_friend_traces conf =
     (if wpf <> "" then
       let fname =
         String.concat Filename.dir_sep
-          [Util.base_path conf.bname; "etc"; "cnt"; "wizard.log"]
+          [conf.path.dir_root; "etc"; "cnt"; "wizard.log"]
       in
       update_wf_trace conf fname)
   else if conf.friend && not conf.just_friend_wizard && conf.user <> "" then
@@ -95,7 +96,7 @@ let set_wizard_and_friend_traces conf =
     then
       let fname =
         String.concat Filename.dir_sep
-          [Util.base_path conf.bname; "etc"; "cnt"; "friends.log"]
+          [conf.path.dir_root; "etc"; "cnt"; "friends.log"]
       in
       update_wf_trace conf fname
 
@@ -124,7 +125,7 @@ let incr_request_counter =
 let lang_file_name conf fname =
   let fname1 =
     String.concat Filename.dir_sep
-      [Util.base_path conf.bname; "etc"; "lang"; (Filename.basename fname ^ ".txt")]
+      [conf.path.dir_root; "etc"; "lang"; (Filename.basename fname ^ ".txt")]
   in
   if Sys.file_exists fname1 then fname1
   else
@@ -135,7 +136,7 @@ let lang_file_name conf fname =
 let any_lang_file_name conf fname =
   let fname1 =
     String.concat Filename.dir_sep
-      [Util.base_path conf.bname; "etc"; "lang"; Filename.basename fname ^ ".txt"]
+      [conf.path.dir_root; "etc"; "lang"; Filename.basename fname ^ ".txt"]
   in
   if Sys.file_exists fname1 then fname1
   else
@@ -148,15 +149,15 @@ let source_file_name conf fname =
   let lang = conf.lang in
   let fname1 =
     String.concat Filename.dir_sep
-      [Util.base_path conf.bname; "documents"; fname ^ "_" ^ lang ^ ".txt"]
+      [conf.path.dir_root; "documents"; fname ^ "_" ^ lang ^ ".txt"]
   in
   let fname2 =
     String.concat Filename.dir_sep
-      [Util.base_path conf.bname; "documents"; fname ^ ".txt"]
+      [conf.path.dir_root; "documents"; fname ^ ".txt"]
   in
   let fname3 =
     String.concat Filename.dir_sep
-      [Util.base_path conf.bname; "documents"; "src"; fname ^ ".txt"]
+      [conf.path.dir_root; "documents"; "src"; fname ^ ".txt"]
   in
   if Sys.file_exists fname1 then fname1
   else if Sys.file_exists fname2 then fname2
@@ -311,7 +312,7 @@ let rec stream_line (strm__ : _ Stream.t) =
 type src_mode = Lang | Source
 
 let notes_links conf =
-  let fname = Filename.concat (Util.base_path conf.bname) "notes_links" in
+  let fname = Filename.concat conf.path.dir_root "notes_links" in
   NotesLinks.read_db_from_file fname
 
 let rec copy_from_stream conf base strm mode =
@@ -328,7 +329,7 @@ let rec copy_from_stream conf base strm mode =
   let rec if_expr =
     function
       'N' -> not (if_expr (Stream.next strm))
-    | 'a' -> conf.auth_file <> ""
+    (* | 'a' -> conf.auth_file <> "" *)
     | 'c' -> !(Wserver.cgi) || browser_cannot_handle_passwords conf
     | 'f' -> conf.friend
     | 'h' -> Sys.file_exists (History.file_name conf)

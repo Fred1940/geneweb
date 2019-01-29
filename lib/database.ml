@@ -3,6 +3,7 @@
 
 open Dbdisk
 open Def
+open Path
 
 type person = dsk_person
 type ascend = dsk_ascend
@@ -155,8 +156,8 @@ let persons_of_first_name_or_surname base_data strings params =
       match !btr with
         Some bt -> bt
       | None ->
-          let fname_inx = Filename.concat bname names_inx in
-          let ic_inx = Secure.open_in_bin fname_inx in
+          (* let fname_inx = Filename.concat bname names_inx in *)
+          let ic_inx = Secure.open_in_bin names_inx in
           (*
           let ab1 = Gc.allocated_bytes () in
           *)
@@ -226,21 +227,22 @@ let persons_of_first_name_or_surname base_data strings params =
 
 let persons_of_name bname patches =
   let t = ref None in
+  let conf_path = Path.path_from_bname bname in
   fun s ->
     let s = Name.crush_lower s in
     let i = Hashtbl.hash s in
     let ai =
-      let ic_inx = Secure.open_in_bin (Filename.concat bname "names.inx") in
+      let ic_inx = Secure.open_in_bin conf_path.file_names_inx in
       let ai =
         let i = i mod Dutil.table_size in
-        let fname_inx_acc = Filename.concat bname "names.acc" in
-        if Sys.file_exists fname_inx_acc then
-          let ic_inx_acc = Secure.open_in_bin fname_inx_acc in
+        if Sys.file_exists conf_path.file_names_acc then begin
+          let ic_inx_acc = Secure.open_in_bin conf_path.file_names_acc in
           seek_in ic_inx_acc (Iovalue.sizeof_long * i);
           let pos = input_binary_int ic_inx_acc in
           close_in ic_inx_acc;
           seek_in ic_inx pos;
           (Iovalue.input ic_inx : iper array)
+        end
         else
           let a =
             match !t with
@@ -533,9 +535,9 @@ let magic_patch = "GnPa0001"
 let check_patch_magic ic =
   really_input_string ic (String.length magic_patch) = magic_patch
 
-let input_patches bname =
+let input_patches fname =
   try
-    let ic = Secure.open_in_bin (Filename.concat bname "patches") in
+    let ic = Secure.open_in_bin fname in
       let r =
         if check_patch_magic ic then (input_value ic : patches_ht)
         else
@@ -574,9 +576,9 @@ let input_patches bname =
        h_descend = ref 0, Hashtbl.create 1;
        h_string = ref 0, Hashtbl.create 1; h_name = Hashtbl.create 1}
 
-let input_synchro bname =
+let input_synchro fname =
   try
-    let ic = Secure.open_in_bin (Filename.concat bname "synchro_patches") in
+    let ic = Secure.open_in_bin fname in
     let r : synchro_patch = input_value ic in
     close_in ic ;
     r
@@ -606,16 +608,12 @@ let person_of_key persons strings persons_of_name first_name surname occ =
     find ipl
 
 let opendb bname =
-  let bname =
-    if Filename.check_suffix bname ".gwb" then bname else bname ^ ".gwb"
-  in
-  let patches = input_patches bname in
-  let synchro = input_synchro bname in
-  let particles = (* REORG TODO particles *)
-    Mutil.input_particles (Filename.concat bname "particles.txt")
-  in
+  let path = Path.path_from_bname bname in
+  let patches = input_patches path.Path.file_patches in
+  let synchro = input_synchro path.Path.file_synchro_patches in
+  let particles = Mutil.input_particles path.file_particles in
   let ic =
-    let ic = Secure.open_in_bin (Filename.concat bname "base") in
+    let ic = Secure.open_in_bin path.file_base in
     Dutil.check_magic ic;
     ic
   in
@@ -631,14 +629,14 @@ let opendb bname =
   let strings_array_pos = input_binary_int ic in
   let norigin_file = input_value ic in
   let ic_acc =
-    try Some (Secure.open_in_bin (Filename.concat bname "base.acc")) with
+    try Some (Secure.open_in_bin path.file_base_acc) with
       Sys_error _ ->
         Printf.eprintf "File base.acc not found; trying to continue...\n";
         flush stderr;
         None
   in
   let ic2 =
-    try Some (Secure.open_in_bin (Filename.concat bname "strings.inx")) with
+    try Some (Secure.open_in_bin path.file_strings_inx) with
       Sys_error _ ->
         Printf.eprintf "File strings.inx not found; trying to continue...\n";
         flush stderr;
@@ -716,8 +714,8 @@ let opendb bname =
   in
   let cleanup () = !cleanup_ref () in
   let commit_synchro () =
-    let tmp_fname = Filename.concat bname "1synchro_patches" in
-    let fname = Filename.concat bname "synchro_patches" in
+    let fname = path.file_synchro_patches in
+    let tmp_fname = fname ^ ".tmp" in
     let oc9 =
       try Secure.open_out_bin tmp_fname with
         Sys_error _ ->

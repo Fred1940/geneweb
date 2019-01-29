@@ -11,6 +11,7 @@ module Mext_app = Api_app_piqi_ext
 (* le plus indépendant possible des autres modules.      *)
 
 open Config
+open Path
 open Def
 open Gwdb
 open Util
@@ -70,7 +71,7 @@ let ht_img = Hashtbl.create 5003
 let load_image_ht conf =
   let dir_img = (* REORG portraits *)
     String.concat
-      Filename.dir_sep  [base_path conf.bname; "documents"; "portraits"]
+      Filename.dir_sep  [conf.path.dir_root; "documents"; "portraits"]
   in
   let images =
     if Sys.file_exists dir_img then Sys.readdir dir_img
@@ -116,7 +117,7 @@ let find_image_file conf base p =
   let s = default_image_name base p in
   let f = (* REORG portraits *)
     String.concat
-      Filename.dir_sep [base_path conf.bname; "documents"; "portraits"; s]
+      Filename.dir_sep [conf.path.dir_root; "documents"; "portraits"; s]
   in
   if Sys.file_exists (f ^ ".gif") then Some (s ^ ".gif")
   else if Sys.file_exists (f ^ ".jpg") then Some (s ^ ".jpg")

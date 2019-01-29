@@ -2,6 +2,7 @@
 (* Copyright (c) 1998-2018 INRIA *)
 
 open Config
+open Path
 open Def
 open Gwdb
 open Util
@@ -228,12 +229,12 @@ let error_person conf err =
   raise Update.ModErr
 
 let rename_image_file conf base p (nfn, nsn, noc) =
-  match auto_image_file conf base p "" with
+  match auto_image_file conf base p with
     Some old_f ->
       let s = default_image_name_of_key nfn nsn noc in
       let f = (* REORG portraits *)
         String.concat
-          Filename.dir_sep [base_path conf.bname; "documents"; "portraits"; s]
+          Filename.dir_sep [conf.path.dir_root; "documents"; "portraits"; s]
       in
       let new_f =
         if Filename.check_suffix old_f ".gif" then f ^ ".gif" else f ^ ".jpg"

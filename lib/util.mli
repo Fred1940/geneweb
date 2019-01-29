@@ -9,7 +9,6 @@ val add_lang_path : string -> unit
 val set_base_dir : string -> unit
 val cnt_dir : string ref
 val image_prefix : config -> string
-val base_path : string -> string
 
 val escache_value : base -> string
 val commit_patches : config -> base -> unit
@@ -212,17 +211,35 @@ val get_keydir_old : config -> base -> person -> string list
 val out_keydir_img_notes : config -> base -> person -> string -> string -> unit
 val get_keydir_img_notes : config -> base -> person -> string -> string
 
-val image_size : string -> (int * int) option
 val limited_image_size :
   int -> int -> string -> (int * int) option -> (int * int) option
-val image_and_size :
-  config -> base -> person -> string ->
-    (string -> (int * int) option -> (int * int) option) ->
-    (bool * string * (int * int) option) option
+val image_size : string -> (int * int) option
 
+(** [default_image_name_of_key fn sn oc]
+    Default portrait filename (without extension).
+
+    e.g. [default_image_name_of_key "Jean Claude" "DUPOND" 3]
+    = ["jean_claude.3.dupond"]
+ *)
 val default_image_name_of_key : string -> string -> int -> string
+
+(** [default_image_name base p]
+    See {!val:default_image_name_of_key}
+*)
 val default_image_name : base -> person -> string
-val auto_image_file : config -> base -> person -> string -> string option
+
+(** [auto_image_file ?bak conf base p]
+    Return the path to portrait image of [p].
+    If [backup] is set to [true],
+    return the path to the backuped version of this file.
+*)
+val auto_image_file : ?bak:bool -> config -> base -> person -> string option
+
+(** [image_and_size ?bak conf base p image_size] *)
+val image_and_size
+  : ?bak:bool -> config -> base -> person ->
+  (string -> (int * int) option -> (int * int) option) ->
+  (bool * string * (int * int) option) option
 
 val only_printable : string -> string
 val only_printable_or_nl : string -> string

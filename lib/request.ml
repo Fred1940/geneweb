@@ -13,6 +13,7 @@ end
 module Make (H : MakeIn) : MakeOut = struct
 
 open Config
+open Path
 open Def
 open Gwdb
 open Util
@@ -331,7 +332,7 @@ let extract_henv conf base =
 
 let set_owner conf =
   if Sys.unix then
-    let s = Unix.stat (Util.base_path conf.bname) in
+    let s = Unix.stat conf.path.dir_root in
     try Unix.setgid s.Unix.st_gid; Unix.setuid s.Unix.st_uid with
       Unix.Unix_error (_, _, _) -> ()
 
@@ -483,7 +484,7 @@ let this_request_updates_database conf =
   | _ -> false
 
 let treat_request_on_base conf =
-  let bfile = Util.base_path conf.bname in
+  let bfile = conf.path.dir_root in
   if this_request_updates_database conf then
     Lock.control (Mutil.lock_file bfile) false
       ~onerror:(fun () -> Update.error_locked conf)

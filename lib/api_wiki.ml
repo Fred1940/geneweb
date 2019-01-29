@@ -2,6 +2,7 @@
 (* Copyright (c) 1998-2007 INRIA *)
 
 open Config
+open Path
 open Util
 
 (* TLSW: Text Language Stolen to Wikipedia
@@ -52,9 +53,9 @@ let section_level s len =
 let notes_aliases conf =
   let fname =
     match p_getenv conf.base_env "notes_alias_file" with
-      Some f -> Filename.concat (Util.base_path conf.bname) f
+      Some f -> Filename.concat conf.path.dir_root f
     | None ->
-        Filename.concat (Util.base_path conf.bname) "notes.alias"
+        Filename.concat conf.path.dir_root "notes.alias"
   in
   match try Some (Secure.open_in fname) with Sys_error _ -> None with
     Some ic ->

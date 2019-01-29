@@ -2,6 +2,7 @@
 (* Copyright (c) 1998-2007 INRIA *)
 
 open Config
+open Path
 open Def
 open Gwdb
 
@@ -1114,34 +1115,6 @@ let string_of_witness_kind conf p witness_kind =
 
 let image_prefix conf = conf.image_prefix
 
-(* REORG base_path *)
-let base_path bname =
-  let (bname, bname_suff) =
-    if Filename.check_suffix bname ".gwb" then
-      (Filename.chop_suffix bname ".gwb", bname)
-    else
-      (bname, bname ^ ".gwb")
-  in
-  #ifdef WINDOWS
-    if bname_suff = ".gwb" then "" else bname_suff
-  #else
-    let bname_suff = if bname_suff = ".gwb" then "" else bname_suff in
-    let bfile_suff =
-      List.fold_left Filename.concat (Secure.base_dir ()) [bname_suff]
-    in
-    if Sys.file_exists bfile_suff then bfile_suff
-    else if String.length bname >= 6 then
-      let dir =
-        List.fold_left
-          Filename.concat
-          (Secure.base_dir ())
-          [String.make 1 bname.[0]; String.make 1 bname.[1]]
-      in
-      let bfile_suff = Filename.concat dir bname_suff in
-      bfile_suff
-      else bfile_suff
-  #endif
-
 (* *******************************************************************  *)
 (*   Search file (template, image...) in gw default directory.          *)
 (*                                                                      *)
@@ -1239,11 +1212,11 @@ let base_etc_file conf fname =
       | t :: l ->
           let bname_etc_tpl_file =
             String.concat Filename.dir_sep
-              [base_path conf.bname; "etc"; t; fname ^ ".txt"]
+              [conf.path.dir_root; "etc"; t; fname ^ ".txt"]
           in
           let bname_etc_file =
             String.concat Filename.dir_sep
-              [base_path conf.bname; "etc"; fname ^ ".txt"]
+              [conf.path.dir_root; "etc"; fname ^ ".txt"]
           in
           let bases_etc_tpl_file =
             String.concat Filename.dir_sep
@@ -1287,7 +1260,7 @@ let open_etc_file fname =
 let open_etc_file conf fname =
   let fname1 =
     String.concat Filename.dir_sep
-      [base_path conf.bname; "etc"; (Filename.basename fname ^ ".txt")]
+      [conf.path.dir_root; "etc"; (Filename.basename fname ^ ".txt")]
   in
   let fname2 =
     search_in_lang_path
@@ -1429,7 +1402,7 @@ let message_to_wizard conf =
     let print_file fname =
       let fname =
         String.concat Filename.dir_sep
-          [base_path conf.bname; "etc"; (fname ^ ".txt")]
+          [conf.path.dir_root; "etc"; (fname ^ ".txt")]
       in
       try
         let ic = Secure.open_in fname in
@@ -2335,7 +2308,7 @@ let string_of_decimal_num conf f =
 let personal_image_file_name conf str =
   let fname1 =
     String.concat
-      Filename.dir_sep [base_path conf.bname; "documents"; "portraits"; str]
+      Filename.dir_sep [conf.path.dir_root; "documents"; "portraits"; str]
   in
   fname1
 
@@ -2344,11 +2317,11 @@ let personal_image_file_name conf str =
 let source_image_file_name conf str =
   let fname1 =
     String.concat
-      Filename.dir_sep [base_path conf.bname; "documents"; str]
+      Filename.dir_sep [conf.path.dir_root; "documents"; str]
   in
   let fname2 =
     String.concat
-      Filename.dir_sep [base_path conf.bname; "documents"; "images"; str]
+      Filename.dir_sep [conf.path.dir_root; "documents"; "images"; str]
   in
   let fname3 =
         search_in_lang_path (Filename.concat "images" str)
@@ -2517,7 +2490,7 @@ let write_default_sosa conf key =
   let gwf = List.remove_assoc "default_sosa_ref" conf.base_env in
   let gwf = List.rev (("default_sosa_ref", key) :: gwf) in
   let fname = String.concat
-      Filename.dir_sep [base_path conf.bname; "etc"; "config.txt"]
+      Filename.dir_sep [conf.path.dir_root; "etc"; "config.txt"]
   in
 
   let tmp_fname = fname ^ "2" in
@@ -2552,7 +2525,7 @@ let create_topological_sort conf base =
       Consang.topological_sort base (pget conf)
   | Some "no_tstab" -> Array.make (nb_of_persons base) 0
   | _ ->
-      let bfile = base_path conf.bname in
+      let bfile = conf.path.dir_root in
       Lock.control (Mutil.lock_file bfile) false
         ~onerror:(fun () ->
             let () = load_ascends_array base in
@@ -2625,44 +2598,20 @@ let sosa_of_branch ipl =
 
 let space_to_unders = Mutil.tr ' ' '_'
 
-
-(* ************************************************************************** *)
-(*  [Fonc] default_image_name_of_key : string -> string -> int -> string      *)
-(** [Description] : Renvoie à partir de la clé d'une personne, le nom par
-                    défaut de son image (portrait).
-                    Par exemple, Jean Claude DUPOND 3 => jean_claude.3.dupond
-    [Args] :
-      - fnam : first name
-      - snam : surname
-      - occ  : occ
-    [Retour] : string
-    [Rem] : Exporté en clair hors de ce module.                               *)
-(* ************************************************************************** *)
 let default_image_name_of_key fnam surn occ =
   let f = space_to_unders (Name.lower fnam) in
   let s = space_to_unders (Name.lower surn) in
   f ^ "." ^ string_of_int occ ^ "." ^ s
 
-
-(* *********************************************************************** *)
-(*  [Fonc] default_image_name : base -> person -> string                   *)
-(** [Description] : Renvoie à partir d'une personne, le nom par défaut de
-                    son image (portrait) => voir default_image_name_of_key.
-    [Args] :
-      - base : base de donnée
-      - p    : person
-    [Retour] : string
-    [Rem] : Exporté en clair hors de ce module.                            *)
-(* *********************************************************************** *)
 let default_image_name base p =
   default_image_name_of_key (p_first_name base p) (p_surname base p)
     (get_occ p)
-(* REORG portraits *)
-let auto_image_file conf base p saved =
+
+let auto_image_file ?bak:(b=false) conf base p =
   let s = default_image_name base p in
-  let f = (* TODO if // in pathname is not accepted, then duplicate this line *)
-    String.concat
-      Filename.dir_sep [base_path conf.bname; "documents"; "portraits"; saved; s]
+  let f =
+    Filename.concat
+      (if b then conf.path.dir_portraits_bak else conf.path.dir_portraits) s
   in
   if Sys.file_exists (f ^ ".jpg") then Some (f ^ ".jpg")
   else if Sys.file_exists (f ^ ".gif") then Some (f ^ ".gif")
@@ -2671,29 +2620,20 @@ let auto_image_file conf base p saved =
 
 let keydir conf base p =
   let s = default_image_name base p in
-  let f =
-    String.concat
-      Filename.dir_sep [base_path conf.bname; "documents"; "images"; s]
-  in
-  try if Sys.is_directory f then Some f
-  else None
+  let f = Filename.concat conf.path.dir_images s in
+  try if Sys.is_directory f then Some f else None
   with Sys_error _ -> None
 
 let keydir_old conf base p =
   let s = default_image_name base p in
-  let f =
-    String.concat
-      Filename.dir_sep [base_path conf.bname; "documents"; "images"; s; "saved"]
-  in
-  try if Sys.is_directory f then Some f
-  else None
+  let f = List.fold_left Filename.concat conf.path.dir_images [ s ; "saved" ] in
+  try if Sys.is_directory f then Some f else None
   with Sys_error _ -> None
 
 let get_keydir_img_notes conf base p fname =
   let k = default_image_name base p in
   let fname =
-    String.concat Filename.dir_sep
-      [base_path conf.bname; "documents"; "images"; k; (fname ^ ".txt")]
+    List.fold_left Filename.concat conf.path.dir_images [ k ; fname ^ ".txt" ]
   in
   let s = if Sys.file_exists fname then
     let ic = Secure.open_in fname in
@@ -2705,8 +2645,7 @@ let get_keydir_img_notes conf base p fname =
 let out_keydir_img_notes conf base p fname s =
   let k = default_image_name base p in
   let fname =
-    String.concat Filename.dir_sep
-      [base_path conf.bname; "documents"; "images"; k; (fname ^ ".txt")]
+    List.fold_left Filename.concat conf.path.dir_images [ k ; fname ^ ".txt" ]
   in
   try
     let oc = Secure.open_out fname in
@@ -2717,7 +2656,7 @@ let out_keydir_img_notes conf base p fname s =
 let get_keydir_old conf base p =
   match keydir_old conf base p with
     Some f ->
-      List.fold_right (fun f1 l ->
+      Array.fold_right (fun f1 l ->
         if f1.[0] <> '.' && Filename.extension f1 <> ".txt" &&
           ( Filename.extension f1 = ".jpg" ||
             Filename.extension f1 = ".gif" ||
@@ -2725,13 +2664,13 @@ let get_keydir_old conf base p =
         then
           (* vérifier ici le type des images autorisées  *)
           ( f1 :: l ) else l)
-          (Array.to_list (Sys.readdir f)) []
+          (Sys.readdir f) []
   | None -> []
 
 let get_keydir conf base p =
   match keydir conf base p with
     Some f ->
-      List.fold_right (fun f1 l ->
+      Array.fold_right (fun f1 l ->
         if f1.[0] <> '.' && Filename.extension f1 <> ".txt" &&
           ( Filename.extension f1 = ".jpg" ||
             Filename.extension f1 = ".gif" ||
@@ -2739,30 +2678,14 @@ let get_keydir conf base p =
         then
           (* vérifier ici le type des images autorisées  *)
           ( f1 :: l ) else l)
-          (Array.to_list (Sys.readdir f)) []
+          (Sys.readdir f) []
   | None -> []
 
-(* ********************************************************************** *)
-(*  [Fonc] image_and_size : config -> base -> person ->                   *)
-(*                          string -> image_size                          *)
-(** [Description] : Renvoie la source de l'image ainsi que sa taille.
-    [Args] :
-      - conf : configuration de la base
-      - base : base de données
-      - p    : personne
-      - saved: "" or "saved" où peut être une sauvegarde du portrait
-      [Retour] :
-        - is_filename : indique si la source de l'image est un nom de
-                        fichier ou une URL.
-        - source
-        - image_size
-    [Rem] : Exporté en clair hors de ce module.                            *)
-(* *********************************************************************** *)
-let image_and_size conf base p saved image_size =
+let image_and_size ?bak conf base p image_size =
   if not conf.no_image && authorized_age conf base p then
     match sou base (get_image p) with
       "" ->
-        begin match auto_image_file conf base p saved with
+        begin match auto_image_file ?bak conf base p with
           Some f -> Some (true, f, image_size f None)
         | None -> None
         end
@@ -2818,7 +2741,7 @@ let has_image conf base p =
     not (is_empty_string (get_image p)) &&
     (conf.wizard || conf.friend ||
      not (string_exists (sou base (get_image p)) "/private/")) ||
-    auto_image_file conf base p "" <> None
+    auto_image_file conf base p <> None
   else false
 
 let has_keydir conf base p =
@@ -3000,7 +2923,7 @@ let (ht_cache_info : cache_info_t) = Hashtbl.create 1
     [Rem] : Exporté en clair hors de ce module.                             *)
 (* ************************************************************************ *)
 let cache_info conf =
-  Filename.concat (base_path conf.bname) "cache_info"
+  Filename.concat conf.path.dir_root "cache_info"
 
 
 (* ************************************************************************ *)
@@ -3129,7 +3052,7 @@ let commit_patches conf base =
     if wpf <> "" then
       let fname =
         String.concat Filename.dir_sep
-          [base_path conf.bname; "etc"; "cnt"; "update.log"]
+          [conf.path.dir_root; "etc"; "cnt"; "update.log"]
       in
       update_wf_trace conf fname
 
@@ -3154,9 +3077,9 @@ let short_f_month m =
 
 type auth_user = { au_user : string; au_passwd : string; au_info : string }
 
-(* TODO provide bname *)
 let read_gen_auth_file fname =
-  let fname = Filename.concat (base_path "") fname in
+  let conf_path = Path.path_from_bname "" in (* FIXME *)
+  let fname = Filename.concat conf_path.dir_password fname in
   try
     let ic = Secure.open_in fname in
     let rec loop data =
@@ -3578,7 +3501,7 @@ type cache_visited_t = (string, (iper * string) list) Hashtbl.t
     [Rem] : Exporté en clair hors de ce module.                             *)
 (* ************************************************************************ *)
 let cache_visited conf =
-  Filename.concat (base_path conf.bname) "cache_visited"
+  Filename.concat conf.path.dir_root "cache_visited"
 
 
 (* ************************************************************************ *)

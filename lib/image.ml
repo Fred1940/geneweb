@@ -82,10 +82,10 @@ let print_image_file fname =
     [Retour] : aucun
     [Rem] : Ne pas utiliser en dehors de ce module.                           *)
 (* ************************************************************************** *)
-let print_personal_image conf base p saved =
-  match Util.image_and_size conf base p saved (fun _ _ -> Some (1, 1)) with
+let print_personal_image ?bak conf base p =
+  match Util.image_and_size ?bak conf base p (fun _ _ -> Some (1, 1)) with
     Some (true, f, _) ->
-      if print_image_file f then () else Hutil.incorrect_request conf
+      if not (print_image_file f) then Hutil.incorrect_request conf
   | _ -> Hutil.incorrect_request conf
 
 (* ************************************************************************** *)
@@ -121,7 +121,7 @@ let print conf base =
   | (Some f, _) ->
       print_source_image conf f
   | (_, Some p) ->
-      print_personal_image conf base p ""
+      print_personal_image conf base p
   | (_, _) -> Hutil.incorrect_request conf
 
 let print_saved conf base =
@@ -133,7 +133,7 @@ let print_saved conf base =
   | (Some f, _) ->
       print_source_image conf f
   | (_, Some p) ->
-      print_personal_image conf base p "saved"
+      print_personal_image ~bak:true conf base p
   | (_, _) -> Hutil.incorrect_request conf
 
 (* ************************************************************************** *)

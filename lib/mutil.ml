@@ -82,7 +82,8 @@ let nominative s =
     Some _ -> decline 'n' s
   | _ -> s
 
-let remove_file f = try Sys.remove f with Sys_error _ -> ()
+let remove_file f =
+  if Sys.file_exists f then Sys.remove f
 
 let mkdir_p x =
   let rec loop x =

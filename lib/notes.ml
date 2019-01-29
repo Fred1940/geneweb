@@ -2,6 +2,7 @@
 (* Copyright (c) 1998-2007 INRIA *)
 
 open Config
+open Path
 open Gwdb
 open Util
 
@@ -9,7 +10,7 @@ module StrSet = Mutil.StrSet
 
 let file_path conf base fname =
   List.fold_right Filename.concat
-    [Util.base_path conf.bname; base_notes_dir base] fname ^ ".txt"
+    [conf.path.dir_root; base_notes_dir base] fname ^ ".txt"
 
 let path_of_fnotes fnotes =
   match NotesLinks.check_file_name fnotes with
@@ -179,7 +180,7 @@ let merge_possible_aliases conf db =
     [] db
 
 let notes_links_db conf base eliminate_unlinked =
-  let bdir = Util.base_path conf.bname in
+  let bdir = conf.path.dir_root in
   let fname = Filename.concat bdir "notes_links" in
   let db = NotesLinks.read_db_from_file fname in
   let db = merge_possible_aliases conf db in
@@ -433,7 +434,7 @@ let update_notes_links_db conf fnotes s =
     in
     loop [] [] 1 0
   in
-  let bdir = Util.base_path conf.bname in
+  let bdir = conf.path.dir_root in
   NotesLinks.update_db bdir fnotes (list_nt, list_ind)
 
 let commit_notes conf base fnotes s =
@@ -443,7 +444,7 @@ let commit_notes conf base fnotes s =
   let fname = path_of_fnotes fnotes in
   let fpath =
     List.fold_right Filename.concat
-      [Util.base_path conf.bname; base_notes_dir base] fname
+      [conf.path.dir_root; base_notes_dir base] fname
   in
   Mutil.mkdir_p (Filename.dirname fpath);
   begin try Gwdb.commit_notes base fname s with

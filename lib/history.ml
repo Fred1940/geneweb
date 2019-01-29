@@ -2,6 +2,7 @@
 (* Copyright (c) 1998-2007 INRIA *)
 
 open Config
+open Path
 open Def
 open Gwdb
 open TemplAst
@@ -9,7 +10,7 @@ open Util
 
 let file_name conf =
   List.fold_right
-    Filename.concat [Util.base_path conf.bname; "history"] "history.txt"
+    Filename.concat [conf.path.dir_root; "history"] "history.txt"
 
 (* Record history when committing updates *)
 

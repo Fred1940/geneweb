@@ -81,7 +81,7 @@ let print_differences conf base branches p1 p2 =
   end;
   string_field (transl_nth conf "image/images" 0) "image"
     (fun p ->
-       let v = image_and_size conf base p "" (limited_image_size 75 100) in
+       let v = image_and_size conf base p (limited_image_size 75 100) in
        match v with
          Some (false, link, _) ->
            "<img src=\"" ^ link ^

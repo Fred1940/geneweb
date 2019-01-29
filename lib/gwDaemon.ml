@@ -2,6 +2,7 @@
 (* Copyright (c) 1998-2007 INRIA *)
 
 open Config
+open Path
 open Def
 open Util
 
@@ -254,17 +255,13 @@ let strip_trailing_spaces s =
   in
   String.sub s 0 len
 
-(* REORG config *)
 let read_base_env bname =
-  let fname = String.concat
-    Filename.dir_sep [base_path bname; "etc"; "config.txt"]
-  in
-  let d1 =
-    String.concat
-      Filename.dir_sep [base_path bname; "etc"; "cnt"]
-  in
-  (try Unix.mkdir d1 0o777 with Unix.Unix_error (_, _, _) -> ());
-  try
+  let conf_path = Path.path_from_bname bname in
+  let fname = conf_path.file_conf in
+  if not (Sys.file_exists conf_path.dir_cnt) then
+  Unix.mkdir conf_path.dir_cnt 0o777 ;
+  if Sys.file_exists conf_path.file_conf
+  then begin
     let ic = Secure.open_in fname in
     let env =
       let rec loop env =
@@ -277,8 +274,10 @@ let read_base_env bname =
       in
       loop []
     in
-    close_in ic; env
-  with Sys_error _ -> []
+    close_in ic ;
+    env
+  end
+  else []
 
 let print_renamed conf new_n =
   let link =
@@ -1153,8 +1152,9 @@ let make_conf from_addr request script_name env =
   in
   let lexicon = input_lexicon (if lang = "" then default_lang else lang) in
   (* REORG search in bases/mybase.gwb/ and bases/ *)
-  let _ = Util.add_lang_path (Util.base_path "") in
-  let _ = Util.add_lang_path (Util.base_path base_file) in
+  (* FIXME *)
+  (* let _ = Util.add_lang_path (Util.base_path "") in
+   * let _ = Util.add_lang_path (Util.base_path base_file) in *)
   List.iter
     (fun fname ->
        add_lexicon fname (if lang = "" then default_lang else lang) lexicon)
@@ -1192,6 +1192,7 @@ let make_conf from_addr request script_name env =
   let conf =
     {from = from_addr;
      exe_dir = !exe_dir;
+     path = Path.path_from_bname base_file;
 #ifdef API
      api_host = !selected_api_host;
      api_port = !selected_api_port;
@@ -1291,12 +1292,12 @@ let make_conf from_addr request script_name env =
      charset = "UTF-8"; is_rtl = is_rtl;
      left = if is_rtl then "right" else "left";
      right = if is_rtl then "left" else "right";
-     auth_file =
-       begin try
-         let x = List.assoc "auth_file" base_env in
-         if x = "" then !auth_file else Filename.concat (Util.base_path base_file) x
-       with Not_found -> !auth_file
-       end;
+     (* auth_file =
+      *   begin try
+      *     let x = List.assoc "auth_file" base_env in
+      *     if x = "" then !auth_file else Filename.concat (Util.base_path base_file) x
+      *   with Not_found -> !auth_file
+      *   end; *)
      border =
        begin match Util.p_getint env "border" with
          Some i -> i
@@ -1350,36 +1351,36 @@ let is_robot from =
        let (robxcl, _) = Robot.robot_excl () in
        List.mem_assoc from robxcl.Robot.excl)
 
-let auth_err request auth_file =
-  if auth_file = "" then false, ""
-  else
-    let auth = Wserver.extract_param "authorization: " '\r' request in
-    if auth <> "" then
-      match try Some (Secure.open_in auth_file) with Sys_error _ -> None with
-        Some ic ->
-          let auth =
-            let i = String.length "Basic " in
-            Base64.decode (String.sub auth i (String.length auth - i))
-          in
-          begin try
-            let rec loop () =
-              if auth = input_line ic then
-                begin
-                  close_in ic;
-                  let s =
-                    try
-                      let i = String.rindex auth ':' in String.sub auth 0 i
-                    with Not_found -> "..."
-                  in
-                  false, s
-                end
-              else loop ()
-            in
-            loop ()
-          with End_of_file -> close_in ic; true, auth
-          end
-      | _ -> true, "(auth file '" ^ auth_file ^ "' not found)"
-    else true, "(authorization not provided)"
+(* let auth_err request auth_file =
+ *   if auth_file = "" then false, ""
+ *   else
+ *     let auth = Wserver.extract_param "authorization: " '\r' request in
+ *     if auth <> "" then
+ *       match try Some (Secure.open_in auth_file) with Sys_error _ -> None with
+ *         Some ic ->
+ *           let auth =
+ *             let i = String.length "Basic " in
+ *             Base64.decode (String.sub auth i (String.length auth - i))
+ *           in
+ *           begin try
+ *             let rec loop () =
+ *               if auth = input_line ic then
+ *                 begin
+ *                   close_in ic;
+ *                   let s =
+ *                     try
+ *                       let i = String.rindex auth ':' in String.sub auth 0 i
+ *                     with Not_found -> "..."
+ *                   in
+ *                   false, s
+ *                 end
+ *               else loop ()
+ *             in
+ *             loop ()
+ *           with End_of_file -> close_in ic; true, auth
+ *           end
+ *       | _ -> true, "(auth file '" ^ auth_file ^ "' not found)"
+ *     else true, "(authorization not provided)" *)
 
 let no_access conf =
   let title _ = Wserver.printf "Error" in
@@ -1392,10 +1393,10 @@ let conf_and_connection from request script_name contents env =
   match !redirected_addr with
     Some addr -> print_redirected conf from request addr
   | None ->
-      let (auth_err, auth) =
-        if conf.auth_file = "" then false, ""
-        else if !(Wserver.cgi) then true, ""
-        else auth_err request conf.auth_file
+      let (auth_err, auth) = false, ""
+        (* if conf.auth_file = "" then false, ""
+         * else if !(Wserver.cgi) then true, ""
+         * else auth_err request conf.auth_file *)
       in
       let mode = Util.p_getenv conf.env "m" in
       if mode <> Some "IM" then

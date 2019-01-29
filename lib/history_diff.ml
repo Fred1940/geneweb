@@ -2,6 +2,7 @@
 (* Copyright (c) 1998-2007 INRIA *)
 
 open Config
+open Path
 open Def
 open Gwdb
 open TemplAst
@@ -31,7 +32,7 @@ let history_d conf =
     | _ -> "history"
   in
   if Filename.is_relative path then
-    Filename.concat (Util.base_path conf.bname) path
+    Filename.concat conf.path.dir_root path
   else
     path
 

@@ -11,7 +11,6 @@ val strip_all_trailing_spaces : string -> string
 val decline : char -> string -> string
 val nominative : string -> string
 
-val remove_file : string -> unit
 val mkdir_p : string -> unit
 val remove_dir : string -> unit
 val lock_file : string -> string
@@ -65,3 +64,8 @@ val contains : ?wildcard:bool -> string -> string -> bool
     Return [p] where [p] is in [particles] and is prefix of [name].
     If no such [p] exists, empty string [""] is returned. *)
 val get_particle : string list -> string -> string
+
+(** [remove_file f]
+    Remove file [f] if it exists
+*)
+val remove_file : string -> unit

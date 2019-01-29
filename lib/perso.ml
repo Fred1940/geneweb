@@ -6,6 +6,7 @@ module MLink = Api_link_tree_piqi
 #endif
 
 open Config
+open Path
 open Def
 open Gwdb
 open TemplAst
@@ -1835,7 +1836,7 @@ let str_val x = VVstring x
 
 let gen_string_of_img_sz max_wid max_hei conf base (p, p_auth) =
   if p_auth then
-    let v = image_and_size conf base p "" (limited_image_size max_wid max_hei) in
+    let v = image_and_size conf base p (limited_image_size max_wid max_hei) in
     match v with
       Some (_, _, Some (width, height)) ->
         Format.sprintf " width=\"%d\" height=\"%d\"" width height
@@ -1872,7 +1873,7 @@ let get_sosa conf base env r p =
     [Rem] : Exporté en clair hors de ce module.                               *)
 (* ************************************************************************** *)
 let get_linked_page conf base p s =
-  let bdir = Util.base_path conf.bname in
+  let bdir = conf.path.dir_root in
   let fname = Filename.concat bdir "notes_links" in
   let db = NotesLinks.read_db_from_file fname in
   let db = Notes.merge_possible_aliases conf db in
@@ -4167,7 +4168,7 @@ and eval_str_person_field conf base env (p, p_auth as ep) =
       | _ -> ""
       end
   | "auto_image_file_name" ->
-      begin match auto_image_file conf base p "" with
+      begin match auto_image_file conf base p with
         Some s when p_auth -> s
       | _ -> ""
       end
@@ -4830,7 +4831,7 @@ and string_of_died conf p p_auth =
 and string_of_image_url conf base (p, p_auth) html =
   if p_auth then
     let v =
-      image_and_size conf base p "" (limited_image_size max_im_wid max_im_wid)
+      image_and_size conf base p (limited_image_size max_im_wid max_im_wid)
     in
     match v with
       Some (true, fname, _) ->
@@ -6154,7 +6155,7 @@ let gen_interp_templ menu title templ_fname conf base p =
       Vint (max_descendant_level desc_level_table_m)
     in
     let nldb () =
-      let bdir = Util.base_path conf.bname in
+      let bdir = conf.path.dir_root in
       let fname = Filename.concat bdir "notes_links" in
       let db = NotesLinks.read_db_from_file fname in
       let db = Notes.merge_possible_aliases conf db in Vnldb db
@@ -6290,7 +6291,7 @@ let print_what_links conf base p =
       let fn = Name.lower (sou base (get_first_name p)) in
       let sn = Name.lower (sou base (get_surname p)) in fn, sn, get_occ p
     in
-    let bdir = Util.base_path conf.bname in
+    let bdir = conf.path.dir_root in
     let fname = Filename.concat bdir "notes_links" in
     let db = NotesLinks.read_db_from_file fname in
     let db = Notes.merge_possible_aliases conf db in

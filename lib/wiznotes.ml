@@ -2,11 +2,12 @@
 (* Copyright (c) 1998-2007 INRIA *)
 
 open Config
+open Path
 open Def
 open Util
 
 let dir conf base =
-  Filename.concat (Util.base_path conf.bname) (Gwdb.base_wiznotes_dir base)
+  Filename.concat conf.path.dir_root (Gwdb.base_wiznotes_dir base)
 
 let wzfile wddir wz = Filename.concat wddir (wz ^ ".txt")
 
