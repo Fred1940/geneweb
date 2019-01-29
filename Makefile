@@ -240,6 +240,10 @@ distrib: distrib-exe
 
 ###### [END] Installation / Distribution section
 
+test: install-exe
+	dune build @runtest
+.PHONY: test
+
 clean:
 	$(RM) $(GENERATED_FILES_DEP) lib/*_piqi*.ml
 	$(RM) -r distribution
